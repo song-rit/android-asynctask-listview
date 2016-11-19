@@ -19,8 +19,10 @@ import java.util.List;
 public class AsyncTaskListViewFragment extends Fragment {
 
     private ListView mListView;
-    private List<String> mStudents;
     private ProgressBar mProgressBar;
+
+    private List<String> mStudents;
+
 
     public static AsyncTaskListViewFragment newInstance() {
         AsyncTaskListViewFragment fragment = new AsyncTaskListViewFragment();
@@ -122,7 +124,7 @@ public class AsyncTaskListViewFragment extends Fragment {
             super.onPostExecute(result);
 
             Toast.makeText(getActivity(), result, Toast.LENGTH_SHORT).show();
-//            mProgressBar.setVisibility(View.GONE);
+            mProgressBar.setVisibility(View.GONE);
         }
     }
 
