@@ -13,11 +13,14 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 
+import com.bumptech.glide.Glide;
 import com.google.gson.Gson;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import app.awitcha.asynctasklistview.adapter.CustomListViewAdapter;
+import app.awitcha.asynctasklistview.model.ImageModel;
 import app.awitcha.asynctasklistview.model.MyImageModel;
 import app.awitcha.asynctasklistview.utill.CheckNetworkConnection;
 import app.awitcha.asynctasklistview.utill.EventControl;
@@ -34,6 +37,7 @@ public class GlideAsyncTaskListViewFragment extends Fragment {
     private ProgressBar mProgressBar;
 
     private FragmentActivity mActivity;
+
     private EventControl mEventCtrl;
 
     private MyImageModel mMyImageModel;
@@ -71,14 +75,14 @@ public class GlideAsyncTaskListViewFragment extends Fragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
-        if(mMyImageModel == null) {
+        if (mMyImageModel == null) {
             sendRequest();
         }
     }
 
     private void sendRequest() {
 
-        if(CheckNetworkConnection.isConnectionAvailable(mActivity)) {
+        if (CheckNetworkConnection.isConnectionAvailable(mActivity)) {
             Thread thread = new Thread() {
                 @Override
                 public void run() {
@@ -91,12 +95,12 @@ public class GlideAsyncTaskListViewFragment extends Fragment {
                     try {
                         Message myImageMsg = okHttp.HttpGetMessage(jsonUrl);
 
-                        if(myImageMsg.what == 1) {
+                        if (myImageMsg.what == 1) {
                             final String myImageJson = (String) myImageMsg.obj;
                             mMyImageModel = gson.fromJson(myImageJson, MyImageModel.class);
 
-                            if(mMyImageModel.isStatus()) {
-                               updateViewOk();
+                            if (mMyImageModel.isStatus()) {
+                                updateViewOk();
                             } else {
                                 updateViewNotFound();
                             }
@@ -124,8 +128,9 @@ public class GlideAsyncTaskListViewFragment extends Fragment {
         mActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                CustomListViewAdapter adapter = new CustomListViewAdapter(mActivity);
+                CustomListViewAdapter adapter = new CustomListViewAdapter(mActivity, R.layout.list_item_image, new ArrayList<ImageModel>());
                 mListView.setAdapter(adapter);
+                new MyTask().execute();
             }
         });
     }
@@ -138,26 +143,48 @@ public class GlideAsyncTaskListViewFragment extends Fragment {
         mEventCtrl.ToastShort("Not found");
     }
 
-    private class MyTask extends AsyncTask<Void, Void, Void> {
+    private class MyTask extends AsyncTask<Void, ImageModel, Message> {
+
+        CustomListViewAdapter adapter;
+        Message message;
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
+
+            adapter = (CustomListViewAdapter) mListView.getAdapter();
+            Message message = new Message();
+
         }
 
         @Override
-        protected Void doInBackground(Void... voids) {
-            return null;
+        protected Message doInBackground(Void... voids) {
+
+            for (ImageModel image : mMyImageModel.getImages()) {
+                publishProgress(image);
+            }
+            return message;
         }
 
         @Override
-        protected void onProgressUpdate(Void... values) {
-            super.onProgressUpdate(values);
+        protected void onProgressUpdate(ImageModel... imageModels) {
+            super.onProgressUpdate(imageModels);
+
+            ImageModel item = imageModels[0];
+
+            Glide.with(mActivity)
+                    .load(item.getImage())
+                    .downloadOnly(2000, 2000);
+
+
+
+            adapter.add(item);
+
         }
 
         @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
+        protected void onPostExecute(Message msg) {
+            super.onPostExecute(msg);
         }
     }
 
