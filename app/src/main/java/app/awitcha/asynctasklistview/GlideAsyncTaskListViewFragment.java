@@ -1,8 +1,10 @@
 package app.awitcha.asynctasklistview;
 
 
+import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -13,11 +15,19 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 
+import com.bumptech.glide.DrawableRequestBuilder;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.resource.drawable.GlideDrawable;
+import com.bumptech.glide.request.FutureTarget;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.google.gson.Gson;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 
 import app.awitcha.asynctasklistview.adapter.CustomListViewAdapter;
 import app.awitcha.asynctasklistview.model.ImageModel;
@@ -147,6 +157,7 @@ public class GlideAsyncTaskListViewFragment extends Fragment {
 
         CustomListViewAdapter adapter;
         Message message;
+        Handler addItemHandler;
 
         @Override
         protected void onPreExecute() {
@@ -160,8 +171,39 @@ public class GlideAsyncTaskListViewFragment extends Fragment {
         @Override
         protected Message doInBackground(Void... voids) {
 
-            for (ImageModel image : mMyImageModel.getImages()) {
-                publishProgress(image);
+            for (final ImageModel image : mMyImageModel.getImages()) {
+
+                try {
+
+                    FutureTarget<GlideDrawable> future  = (FutureTarget<GlideDrawable>) Glide.with(mActivity)
+                            .load(image.getImage())
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .listener(new RequestListener<String, GlideDrawable>() {
+                                @Override
+                                public boolean onException(Exception e, String model, Target<GlideDrawable> target, boolean isFirstResource) {
+                                    return false;
+                                }
+
+                                @Override
+                                public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
+                                    mEventCtrl.ToastShort("Image Ok");
+                                    publishProgress(image);
+                                    return false;
+                                }
+                            })
+                            .into(500, 500);
+
+
+                    GlideDrawable cacheFile = future.get();
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                }
+
+
+
             }
             return message;
         }
@@ -170,16 +212,8 @@ public class GlideAsyncTaskListViewFragment extends Fragment {
         protected void onProgressUpdate(ImageModel... imageModels) {
             super.onProgressUpdate(imageModels);
 
-            ImageModel item = imageModels[0];
-
-            Glide.with(mActivity)
-                    .load(item.getImage())
-                    .downloadOnly(2000, 2000);
-
-
-
+            final ImageModel item = imageModels[0];
             adapter.add(item);
-
         }
 
         @Override
